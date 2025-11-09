@@ -18,7 +18,7 @@ class MergeTest extends AnyFlatSpec with should.Matchers with ScalaCheckProperty
     ).toSeq shouldBe Seq(2, 3, 4, 5, 6, 7 , 8, 9, 10, 16, 20, 21)
   }
 
-  it should "work dammit" in {
+  it should "work for anything with an Ordering, not just numbers" in {
     mergeIterable(
       Seq('h', 's'),
       Seq('a', 'r'),
@@ -28,13 +28,9 @@ class MergeTest extends AnyFlatSpec with should.Matchers with ScalaCheckProperty
 
   it should "work for many different things" in {
     forAll { (n: Seq[Seq[Int]]) =>
-      whenever (n.nonEmpty) {
-        mergeIterable(n.map(_.sorted) *).toSeq shouldBe sorted
-      }
+      mergeIterable(n.map(_.sorted) *).toSeq shouldBe sorted
     }
   }
-
-
 
   it should "use a leaf line of appro size" in {
     leafLineLengthRequiredFor(2) shouldBe 2
