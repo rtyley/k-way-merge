@@ -12,7 +12,8 @@ Test / testOptions +=
   Tests.Argument(TestFrameworks.ScalaTest, "-u", s"test-results/scala-${scalaVersion.value}", "-o")
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "3.2.19" % Test
+  "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+  "org.scalatestplus" %% "scalacheck-1-18" % "3.2.19.0" % Test
 )
 
 // releaseVersion := ReleaseVersion.fromAssessedCompatibilityWithLatestRelease().value

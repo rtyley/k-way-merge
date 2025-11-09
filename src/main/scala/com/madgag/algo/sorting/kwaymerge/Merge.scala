@@ -2,21 +2,22 @@ package com.madgag.algo.sorting.kwaymerge
 
 import java.lang.Integer.highestOneBit
 import scala.annotation.tailrec
+import scala.collection.AbstractIterable
 import scala.math.Ordered.orderingToOrdered
 
 object Merge {
 
   def leafLineLengthRequiredFor(k: Int): Int = highestOneBit(k - 1) << 1
 
-  def mergeIterable[T: Ordering](seqs: Iterable[T]*): Iterable[T] = {
-    ???
+  def mergeIterable[T: Ordering](seqs: Iterable[T]*): Iterable[T] = new AbstractIterable[T] {
+    override def iterator: Iterator[T] = merge(seqs.map(_.iterator)*)
   }
 
   def merge[T](seqs: Iterator[T]*)(using ordering: Ordering[T]): Iterator[T] = {
-    case class NodePayload(value: T, seqIndex: Int)
-
-    given Ordering[Option[NodePayload]] =
-      (x: Option[NodePayload], y: Option[NodePayload]) =>
+    type NodeValue = Option[NodePayload[T]]
+    
+    given Ordering[NodeValue] =
+      (x: NodeValue, y: NodeValue) =>
         (x, y) match {
           case (Some(x), Some(y)) => ordering.compare(x._1, y._1)
           case (None, None) => 0
@@ -27,9 +28,9 @@ object Merge {
     val leafLineLength = leafLineLengthRequiredFor(k = seqs.size)
     val leafLineBaseIndex = leafLineLength - 1
 
-    val tree = Array.ofDim[Option[NodePayload]](leafLineBaseIndex + leafLineLength)
+    val tree = Array.ofDim[NodeValue](leafLineBaseIndex + leafLineLength)
 
-    def leafNodeValueForNextFrom(seq: Iterator[T], seqIndex: Int): Option[NodePayload] =
+    def leafNodeValueForNextFrom(seq: Iterator[T], seqIndex: Int): NodeValue =
       seq.nextOption().map(value => NodePayload(value, seqIndex))
 
     for ((seq, seqIndex) <- seqs.zipWithIndex) {
@@ -39,7 +40,7 @@ object Merge {
       tree(ti) = None
     }
 
-    def compareAtTreeIndex(ti: Int, a: Option[NodePayload], b: Option[NodePayload]): Option[NodePayload] = {
+    def compareAtTreeIndex(ti: Int, a: NodeValue, b: NodeValue): NodeValue = {
       if (a < b)
         tree(ti) = b ; a
       else
@@ -48,12 +49,12 @@ object Merge {
 
     def parentOf(treeIndex: Int) = (treeIndex - 1) / 2
 
-    def determineWinnerOf(ti: Int): Option[NodePayload] = if (ti >= leafLineBaseIndex) tree(ti) else {
+    def determineWinnerOf(ti: Int): NodeValue = if (ti >= leafLineBaseIndex) tree(ti) else {
       val lhcIndex = (ti * 2) + 1
       compareAtTreeIndex(ti, determineWinnerOf(lhcIndex), determineWinnerOf(lhcIndex + 1))
     }
 
-    @tailrec def replayUpFrom(changedChildTreeIndex: Int, newWinnerSentUpFromChild: Option[NodePayload]): Option[NodePayload] = {
+    @tailrec def replayUpFrom(changedChildTreeIndex: Int, newWinnerSentUpFromChild: NodeValue): NodeValue = {
       val ti = parentOf(changedChildTreeIndex)
       val winner = compareAtTreeIndex(ti, tree(ti), newWinnerSentUpFromChild)
       if (ti == 0) winner else replayUpFrom(ti, winner)
@@ -74,10 +75,12 @@ object Merge {
       winner.map(np => np.value -> PreviousWinner(np.seqIndex))
     }
   }
+
+  case class NodePayload[T](value: T, seqIndex: Int)
+
+  sealed trait State
+
+  case object Uninitialized extends State
+
+  case class PreviousWinner(seqIndex: Int) extends State
 }
-
-sealed trait State
-
-case object Uninitialized extends State
-
-case class PreviousWinner(seqIndex: Int) extends State

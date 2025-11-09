@@ -1,27 +1,39 @@
 package com.madgag.algo.sorting.kwaymerge
 
-import com.madgag.algo.sorting.kwaymerge.Merge.leafLineLengthRequiredFor
+import com.madgag.algo.sorting.kwaymerge.Merge.{leafLineLengthRequiredFor, mergeIterable}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-class MergeTest extends AnyFlatSpec with should.Matchers {
+import scala.language.postfixOps
+
+class MergeTest extends AnyFlatSpec with should.Matchers with ScalaCheckPropertyChecks {
   "Merge" should "merge several sorted lists and merge them into a single sorted list" in {
     // Example from https://en.wikipedia.org/wiki/K-way_merge_algorithm#Merge
-    Merge.merge(
-      Seq(2, 7, 16).iterator,
-      Seq(5, 10, 20).iterator,
-      Seq(3, 6, 21).iterator,
-      Seq(4, 8, 9).iterator
+    mergeIterable(
+      Seq(2, 7, 16),
+      Seq(5, 10, 20),
+      Seq(3, 6, 21),
+      Seq(4, 8, 9)
     ).toSeq shouldBe Seq(2, 3, 4, 5, 6, 7 , 8, 9, 10, 16, 20, 21)
   }
 
   it should "work dammit" in {
-    Merge.merge(
-      Seq('h', 's').iterator,
-      Seq('a', 'r').iterator,
-      Seq('b', 'o').iterator
-    ).toSeq.mkString shouldBe "abhors"
+    mergeIterable(
+      Seq('h', 's'),
+      Seq('a', 'r'),
+      Seq('b', 'o')
+    ).mkString shouldBe "abhors"
   }
+
+  it should "work for many different things" in {
+    forAll { (n: Seq[Seq[Int]]) =>
+      whenever (n.nonEmpty) {
+        mergeIterable(n.map(_.sorted) *).toSeq shouldBe sorted
+      }
+    }
+  }
+
 
 
   it should "use a leaf line of appro size" in {
