@@ -17,13 +17,12 @@ object Merge {
     else if (seqs.size == 1) seqs.head else {
       type NodeValue = Option[NodePayload[T]]
 
-      given Ordering[NodeValue] = (x: NodeValue, y: NodeValue) =>
-        (x, y) match {
-          case (Some(x), Some(y)) => ordering.compare(x._1, y._1)
-          case (None, None) => 0
-          case (None, _) => 1
-          case (_, None) => -1
-        }
+      given Ordering[NodeValue] = {
+        case (Some(x), Some(y)) => ordering.compare(x._1, y._1)
+        case (None, None) => 0
+        case (None, _) => 1
+        case (_, None) => -1
+      }
 
       val leafLineLength = leafLineLengthRequiredFor(k = seqs.size)
       val leafLineBaseIndex = leafLineLength - 1
