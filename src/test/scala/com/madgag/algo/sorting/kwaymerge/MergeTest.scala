@@ -1,6 +1,7 @@
 package com.madgag.algo.sorting.kwaymerge
 
-import com.madgag.algo.sorting.kwaymerge.Merge.{leafLineLengthRequiredFor, mergeIterable}
+import com.madgag.algo.sorting.kwaymerge.Merge.{leafLineLengthRequiredFor, merge, mergeIterable}
+import org.scalatest.Inspectors
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -26,11 +27,25 @@ class MergeTest extends AnyFlatSpec with should.Matchers with ScalaCheckProperty
     ).mkString shouldBe "abhors"
   }
 
-  it should "work for many different things" in {
-    forAll { (n: Seq[Seq[Int]]) =>
-      mergeIterable(n.map(_.sorted) *).toSeq shouldBe sorted
-    }
+  it should "work for all ScalaCheck testcases" in forAll { (seqs: Seq[Seq[Int]]) =>
+    val mergedSeq = mergeIterable(seqs.map(_.sorted) *).toSeq
+    mergedSeq shouldBe sorted
+    mergedSeq shouldBe seqs.flatten.sorted
   }
+
+  it should "do minimal work" in forAll { (seqs: Seq[Seq[Int]]) =>
+    val countingIterators: Seq[CountingIterator[Int]] = seqs.map(seq => CountingIterator(seq.sorted*))
+
+    val mergedIterator = merge(countingIterators *)
+
+    Inspectors.forAll(countingIterators) { countingIterator =>
+      countingIterator.hasNextCalls shouldBe 0
+      countingIterator.nextCalls shouldBe 0
+    }
+
+    mergeIterable(seqs.map(_.sorted) *).toSeq shouldBe sorted
+  }
+
 
   it should "use a leaf line of appro size" in {
     leafLineLengthRequiredFor(2) shouldBe 2
