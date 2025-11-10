@@ -16,58 +16,57 @@ object Merge {
   def merge[T](seqs: Iterator[T]*)(using ordering: Ordering[T]): Iterator[T] = if (seqs.isEmpty) Iterator.empty
     else if (seqs.size == 1) seqs.head else {
       type NodeValue = Option[NodePayload[T]]
-      
-      given Ordering[NodeValue] =
-        (x: NodeValue, y: NodeValue) =>
-          (x, y) match {
-            case (Some(x), Some(y)) => ordering.compare(x._1, y._1)
-            case (None, None) => 0
-            case (None, _) => 1
-            case (_, None) => -1
-          }
-  
+
+      given Ordering[NodeValue] = (x: NodeValue, y: NodeValue) =>
+        (x, y) match {
+          case (Some(x), Some(y)) => ordering.compare(x._1, y._1)
+          case (None, None) => 0
+          case (None, _) => 1
+          case (_, None) => -1
+        }
+
       val leafLineLength = leafLineLengthRequiredFor(k = seqs.size)
       val leafLineBaseIndex = leafLineLength - 1
-  
+
       val tree = Array.ofDim[NodeValue](leafLineBaseIndex + leafLineLength)
-  
+
       def leafNodeValueForNextFrom(seq: Iterator[T], seqIndex: Int): NodeValue =
         seq.nextOption().map(value => NodePayload(value, seqIndex))
-  
+
       for ((seq, seqIndex) <- seqs.zipWithIndex) {
         tree(leafLineBaseIndex + seqIndex) = leafNodeValueForNextFrom(seq, seqIndex)
       }
       for (ti <- leafLineBaseIndex + seqs.size until tree.length) {
         tree(ti) = None
       }
-  
+
       def compareAtTreeIndex(ti: Int, a: NodeValue, b: NodeValue): NodeValue = {
         if (a < b)
           tree(ti) = b ; a
         else
           tree(ti) = a ; b
       }
-  
+
       def parentOf(treeIndex: Int) = (treeIndex - 1) / 2
-  
+
       def determineWinnerOf(ti: Int): NodeValue = if (ti >= leafLineBaseIndex) tree(ti) else {
         val lhcIndex = (ti * 2) + 1
         compareAtTreeIndex(ti, determineWinnerOf(lhcIndex), determineWinnerOf(lhcIndex + 1))
       }
-  
+
       @tailrec def replayUpFrom(changedChildTreeIndex: Int, newWinnerSentUpFromChild: NodeValue): NodeValue = {
         val ti = parentOf(changedChildTreeIndex)
         val winner = compareAtTreeIndex(ti, tree(ti), newWinnerSentUpFromChild)
         if (ti == 0) winner else replayUpFrom(ti, winner)
       }
-  
+
       def replayGamesFor(seqIndex: Int) = {
         val ti = leafLineBaseIndex + seqIndex
         val leafValue = leafNodeValueForNextFrom(seqs(seqIndex), seqIndex)
         tree(ti) = leafValue
         replayUpFrom(ti, leafValue)
       }
-  
+
       Iterator.unfold[T, State](Uninitialized) { state =>
         val winner = state match {
           case Uninitialized => determineWinnerOf(0)
