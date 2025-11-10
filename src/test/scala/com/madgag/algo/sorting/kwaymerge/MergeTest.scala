@@ -35,7 +35,6 @@ class MergeTest extends AnyFlatSpec with should.Matchers with ScalaCheckProperty
 
   it should "do minimal work" in forAll { (seqs: Seq[Seq[Int]]) =>
     val countingIterators: Seq[CountingIterator[Int]] = seqs.map(seq => CountingIterator(seq.sorted*))
-
     val mergedIterator = merge(countingIterators *)
 
     Inspectors.forAll(countingIterators) { countingIterator =>
@@ -43,7 +42,24 @@ class MergeTest extends AnyFlatSpec with should.Matchers with ScalaCheckProperty
       countingIterator.nextCalls shouldBe 0
     }
 
-    mergeIterable(seqs.map(_.sorted) *).toSeq shouldBe sorted
+    whenever(seqs.size > 1) {
+      val expectedSequence = seqs.flatten.sorted
+
+      val isNonEmpty = mergedIterator.hasNext // this will force initialisation of the loser-tree
+
+      Inspectors.forAll(countingIterators) { countingIterator =>
+        countingIterator.hasNextCalls shouldBe 1
+        countingIterator.nextCalls should be <= 1 // empty sequences don't get 'next' called
+      }
+
+      for {
+        (value, index) <- mergedIterator.zipWithIndex
+      } {
+        value shouldBe expectedSequence(index)
+        countingIterators.map(_.hasNextCalls).sum shouldBe (seqs.size + index)
+        countingIterators.map(_.nextCalls).sum shouldBe <= (seqs.size + index)
+      }
+    }
   }
 
 
