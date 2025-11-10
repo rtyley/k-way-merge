@@ -6,7 +6,10 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
+import java.time.Duration
+import scala.concurrent.duration.DurationLong
 import scala.language.postfixOps
+import scala.util.Random
 
 class MergeTest extends AnyFlatSpec with should.Matchers with ScalaCheckPropertyChecks {
   "Merge" should "merge several sorted lists and merge them into a single sorted list" in {
@@ -60,6 +63,20 @@ class MergeTest extends AnyFlatSpec with should.Matchers with ScalaCheckProperty
         countingIterators.map(_.nextCalls).sum shouldBe <= (seqs.size + index)
       }
     }
+  }
+
+  def time[R](block: => R): Unit = {
+    val t0 = System.nanoTime()
+    val result = block
+    val elapsed = (System.nanoTime() - t0).nanos
+    println(s"Elapsed: ${elapsed.toMillis} ms")
+  }
+
+  it should "be reasonably fast" in {
+    val seqs = Seq.fill(4)(Seq.fill(Random.nextInt(1000000))(Duration.ofNanos(Random.nextInt())).sorted)
+
+    time(seqs.flatten.sorted.toList)  // somewhat gallingly, this is often a bit faster than k-way loser-tree merge
+    time(Merge.mergeIterable(seqs*).toList)
   }
 
 
